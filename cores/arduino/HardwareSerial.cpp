@@ -109,6 +109,11 @@ void HardwareSerial::_tx_udr_empty_irq(void)
   if (_tx_buffer_head == _tx_buffer_tail) {
     // Buffer empty, so disable interrupts
     cbi(*_ucsrb, UDRIE0);
+    // Now the last byte is in the shift register. If a user callback is set,
+    // enable TX complete interrupt to be notified when the last bit is sent.
+    if (_tx_complete_cb) {
+      sbi(*_ucsrb, TXCIE0);
+    }
   }
 }
 
@@ -158,6 +163,7 @@ void HardwareSerial::end()
   cbi(*_ucsrb, TXEN0);
   cbi(*_ucsrb, RXCIE0);
   cbi(*_ucsrb, UDRIE0);
+  cbi(*_ucsrb, TXCIE0);
   
   // clear any received data
   _rx_buffer_head = _rx_buffer_tail;
@@ -246,6 +252,11 @@ size_t HardwareSerial::write(uint8_t c)
       *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
 #endif
     }
+    // The byte is now in UDR; if a user callback is set, enable TX complete
+    // interrupt to be notified when the last bit has left the shift register.
+    if (_tx_complete_cb) {
+      sbi(*_ucsrb, TXCIE0);
+    }
     return 1;
   }
   tx_buffer_index_t i = (_tx_buffer_head + 1) % SERIAL_TX_BUFFER_SIZE;
@@ -276,6 +287,24 @@ size_t HardwareSerial::write(uint8_t c)
   }
   
   return 1;
+}
+
+void HardwareSerial::setTxCompleteCallback(void (*callback)(void*), void* userdata)
+{
+  _tx_complete_cb = callback;
+  _tx_complete_userdata = userdata;
+}
+
+void HardwareSerial::_tx_complete_irq(void)
+{
+  // Disable TX complete interrupt until more data is queued/written.
+  // Do not clear TXC here; leave it set so flush() semantics remain correct.
+  cbi(*_ucsrb, TXCIE0);
+
+  // Call user callback if set
+  if (_tx_complete_cb) {
+    _tx_complete_cb(_tx_complete_userdata);
+  }
 }
 
 #endif // whole file

@@ -64,6 +64,19 @@ ISR(USART_UDRE_vect)
   Serial._tx_udr_empty_irq();
 }
 
+#if defined(USART_TX_vect)
+ISR(USART_TX_vect)
+#elif defined(USART0_TX_vect)
+ISR(USART0_TX_vect)
+#elif defined(USART_TXC_vect)
+ISR(USART_TXC_vect) // ATmega8
+#else
+  #error "Don't know what the TX Complete vector is called for Serial"
+#endif
+{
+  Serial._tx_complete_irq();
+}
+
 #if defined(UBRRH) && defined(UBRRL)
   HardwareSerial Serial(&UBRRH, &UBRRL, &UCSRA, &UCSRB, &UCSRC, &UDR);
 #else

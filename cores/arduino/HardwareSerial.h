@@ -113,6 +113,10 @@ class HardwareSerial : public Stream
     unsigned char _rx_buffer[SERIAL_RX_BUFFER_SIZE];
     unsigned char _tx_buffer[SERIAL_TX_BUFFER_SIZE];
 
+    // Optional user callback invoked when the last transmitted bit completes
+    void (*_tx_complete_cb)(void*);
+    void* _tx_complete_userdata;
+
   public:
     inline HardwareSerial(
       volatile uint8_t *ubrrh, volatile uint8_t *ubrrl,
@@ -134,9 +138,15 @@ class HardwareSerial : public Stream
     using Print::write; // pull in write(str) and write(buf, size) from Print
     operator bool() { return true; }
 
+    // Register a callback to be called exactly when transmission fully completes
+    // (i.e., when the last bit has been shifted out). Callback is invoked in
+    // interrupt context, so it must be ISR-safe.
+    void setTxCompleteCallback(void (*callback)(void*), void* userdata);
+
     // Interrupt handlers - Not intended to be called externally
     inline void _rx_complete_irq(void);
     void _tx_udr_empty_irq(void);
+    void _tx_complete_irq(void);
 };
 
 #if defined(UBRRH) || defined(UBRR0H)

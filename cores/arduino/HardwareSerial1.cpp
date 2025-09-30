@@ -58,6 +58,17 @@ ISR(USART1_UDRE_vect)
   Serial1._tx_udr_empty_irq();
 }
 
+#if defined(UART1_TX_vect)
+ISR(UART1_TX_vect)
+#elif defined(USART1_TX_vect)
+ISR(USART1_TX_vect)
+#else
+#error "Don't know what the TX Complete vector is called for Serial1"
+#endif
+{
+  Serial1._tx_complete_irq();
+}
+
 HardwareSerial Serial1(&UBRR1H, &UBRR1L, &UCSR1A, &UCSR1B, &UCSR1C, &UDR1);
 
 // Function that can be weakly referenced by serialEventRun to prevent

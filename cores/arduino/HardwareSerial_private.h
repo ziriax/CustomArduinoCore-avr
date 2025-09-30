@@ -44,6 +44,7 @@
 #define RXEN0 RXEN
 #define TXEN0 TXEN
 #define RXCIE0 RXCIE
+#define TXCIE0 TXCIE
 #define UDRIE0 UDRIE
 #define U2X0 U2X
 #define UPE0 UPE
@@ -54,6 +55,7 @@
 #define RXEN0 RXEN1
 #define TXEN0 TXEN1
 #define RXCIE0 RXCIE1
+#define TXCIE0 TXCIE1
 #define UDRIE0 UDRIE1
 #define U2X0 U2X1
 #define UPE0 UPE1
@@ -94,6 +96,8 @@ HardwareSerial::HardwareSerial(
     _rx_buffer_head(0), _rx_buffer_tail(0),
     _tx_buffer_head(0), _tx_buffer_tail(0)
 {
+  _tx_complete_cb = 0;
+  _tx_complete_userdata = 0;
 }
 
 // Actual interrupt handlers //////////////////////////////////////////////////////////////
