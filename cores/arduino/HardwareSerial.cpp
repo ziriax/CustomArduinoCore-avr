@@ -304,4 +304,47 @@ void HardwareSerial::_tx_complete_irq(void)
   }
 }
 
+bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
+{
+  if (len == 0) return false;
+
+  // Calculate available space without blocking
+  tx_buffer_index_t head;
+  tx_buffer_index_t tail;
+  TX_BUFFER_ATOMIC {
+    head = _tx_buffer_head;
+    tail = _tx_buffer_tail;
+  }
+
+  // Determine capacity in ring buffer (leave one slot empty)
+  tx_buffer_index_t capacity = (head >= tail)
+    ? (tx_buffer_index_t)(SERIAL_TX_BUFFER_SIZE - 1 - head + tail)
+    : (tx_buffer_index_t)(tail - head - 1);
+
+  if (capacity < (tx_buffer_index_t)len) {
+    // Not enough room to enqueue all bytes without blocking
+    return false;
+  }
+
+  // Enqueue all bytes without writing directly to UDR
+  _written = true;
+  for (size_t i = 0; i < len; ++i) {
+    _tx_buffer[head] = data[i];
+    head = (head + 1) % SERIAL_TX_BUFFER_SIZE;
+  }
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    _tx_buffer_head = head;
+    // Ensure the UDRE interrupt is enabled to start/continue transmission
+    sbi(*_ucsrb, UDRIE0);
+  }
+
+  // If a TX-complete callback is registered, ensure we get TXC interrupt
+  // when the last byte finishes shifting out.
+  if (_tx_complete_cb) {
+    sbi(*_ucsrb, TXCIE0);
+  }
+
+  return true;
+}
+
 #endif // whole file
