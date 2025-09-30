@@ -53,6 +53,14 @@
 #define SERIAL_RX_BUFFER_SIZE 64
 #endif
 #endif
+#if ((SERIAL_TX_BUFFER_SIZE & (SERIAL_TX_BUFFER_SIZE - 1)) != 0)
+#error "SERIAL_TX_BUFFER_SIZE must be a power of two"
+#endif
+#if ((SERIAL_RX_BUFFER_SIZE & (SERIAL_RX_BUFFER_SIZE - 1)) != 0)
+#error "SERIAL_RX_BUFFER_SIZE must be a power of two"
+#endif
+#define SERIAL_TX_BUFFER_MASK (SERIAL_TX_BUFFER_SIZE - 1)
+#define SERIAL_RX_BUFFER_MASK (SERIAL_RX_BUFFER_SIZE - 1)
 #if (SERIAL_TX_BUFFER_SIZE>256)
 typedef uint16_t tx_buffer_index_t;
 #else

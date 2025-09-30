@@ -97,7 +97,7 @@ void HardwareSerial::_tx_udr_empty_irq(void)
   // If interrupts are enabled, there must be more data in the output
   // buffer. Send the next byte
   unsigned char c = _tx_buffer[_tx_buffer_tail];
-  _tx_buffer_tail = (_tx_buffer_tail + 1) % SERIAL_TX_BUFFER_SIZE;
+  _tx_buffer_tail = (_tx_buffer_tail + 1) & SERIAL_TX_BUFFER_MASK;
 
   *_udr = c;
 
@@ -172,7 +172,7 @@ void HardwareSerial::end()
 
 int HardwareSerial::available(void)
 {
-  return ((unsigned int)(SERIAL_RX_BUFFER_SIZE + _rx_buffer_head - _rx_buffer_tail)) % SERIAL_RX_BUFFER_SIZE;
+  return ((unsigned int)(_rx_buffer_head - _rx_buffer_tail)) & SERIAL_RX_BUFFER_MASK;
 }
 
 int HardwareSerial::peek(void)
@@ -191,7 +191,7 @@ int HardwareSerial::read(void)
     return -1;
   } else {
     unsigned char c = _rx_buffer[_rx_buffer_tail];
-    _rx_buffer_tail = (rx_buffer_index_t)(_rx_buffer_tail + 1) % SERIAL_RX_BUFFER_SIZE;
+    _rx_buffer_tail = (rx_buffer_index_t)((_rx_buffer_tail + 1) & SERIAL_RX_BUFFER_MASK);
     return c;
   }
 }
@@ -205,8 +205,8 @@ int HardwareSerial::availableForWrite(void)
     head = _tx_buffer_head;
     tail = _tx_buffer_tail;
   }
-  if (head >= tail) return SERIAL_TX_BUFFER_SIZE - 1 - head + tail;
-  return tail - head - 1;
+  tx_buffer_index_t space = (tx_buffer_index_t)(tail - head - 1);
+  return space & SERIAL_TX_BUFFER_MASK;
 }
 
 void HardwareSerial::flush()
@@ -256,7 +256,7 @@ size_t HardwareSerial::write(uint8_t c)
     }
     return 1;
   }
-  tx_buffer_index_t i = (_tx_buffer_head + 1) % SERIAL_TX_BUFFER_SIZE;
+  tx_buffer_index_t i = (_tx_buffer_head + 1) & SERIAL_TX_BUFFER_MASK;
 	
   // If the output buffer is full, there's nothing for it other than to 
   // wait for the interrupt handler to empty it a bit
@@ -330,7 +330,7 @@ bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
   _written = true;
   for (size_t i = 0; i < len; ++i) {
     _tx_buffer[head] = data[i];
-    head = (head + 1) % SERIAL_TX_BUFFER_SIZE;
+    head = (head + 1) & SERIAL_TX_BUFFER_MASK;
   }
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     _tx_buffer_head = head;
