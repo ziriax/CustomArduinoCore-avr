@@ -306,7 +306,9 @@ void HardwareSerial::_tx_complete_irq(void)
 
 bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
 {
-  if (len == 0) return false;
+  if (len == 0) {
+    return false;
+  }
 
   // Calculate available space without blocking
   tx_buffer_index_t head;
@@ -317,10 +319,7 @@ bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
   }
 
   // Determine capacity in ring buffer (leave one slot empty)
-  tx_buffer_index_t capacity = (head >= tail)
-    ? (tx_buffer_index_t)(SERIAL_TX_BUFFER_SIZE - 1 - head + tail)
-    : (tx_buffer_index_t)(tail - head - 1);
-
+  tx_buffer_index_t capacity = (tx_buffer_index_t)(tail - head - 1) & SERIAL_TX_BUFFER_MASK;
   if (capacity < (tx_buffer_index_t)len) {
     // Not enough room to enqueue all bytes without blocking
     return false;
