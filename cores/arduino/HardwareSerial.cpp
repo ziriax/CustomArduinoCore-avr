@@ -86,6 +86,12 @@ void serialEventRun(void)
 
 // Actual interrupt handlers //////////////////////////////////////////////////////////////
 
+#ifdef MPCM0
+  #define CLEAR_TXC_BIT *_ucsra = (1 << TXC0) | ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0)));
+#else
+  #define CLEAR_TXC_BIT *_ucsra = (1 << TXC0) | ((*_ucsra) & ((1 << U2X0)));
+#endif
+
 void HardwareSerial::_tx_udr_empty_irq(void)
 {
   // If interrupts are enabled, there must be more data in the output
@@ -99,12 +105,7 @@ void HardwareSerial::_tx_udr_empty_irq(void)
   // location". This makes sure flush() won't return until the bytes
   // actually got written. Other r/w bits are preserved, and zeroes
   // written to the rest.
-
-#ifdef MPCM0
-  *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0))) | (1 << TXC0);
-#else
-  *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
-#endif
+  CLEAR_TXC_BIT;
 
   if (_tx_buffer_head == _tx_buffer_tail) {
     // Buffer empty, so disable interrupts
@@ -246,11 +247,7 @@ size_t HardwareSerial::write(uint8_t c)
     // be cleared when no bytes are left, causing flush() to hang
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
       *_udr = c;
-#ifdef MPCM0
-      *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0))) | (1 << TXC0);
-#else
-      *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
-#endif
+      CLEAR_TXC_BIT;
     }
     // The byte is now in UDR; if a user callback is set, enable TX complete
     // interrupt to be notified when the last bit has left the shift register.
