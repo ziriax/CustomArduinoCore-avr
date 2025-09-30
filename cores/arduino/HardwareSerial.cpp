@@ -78,11 +78,7 @@ void serialEventRun(void)
 }
 
 // macro to guard critical sections when needed for large TX buffer sizes
-#if (SERIAL_TX_BUFFER_SIZE>256)
 #define TX_BUFFER_ATOMIC ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-#else
-#define TX_BUFFER_ATOMIC
-#endif
 
 // Actual interrupt handlers //////////////////////////////////////////////////////////////
 
@@ -304,7 +300,7 @@ void HardwareSerial::_tx_complete_irq(void)
   }
 }
 
-bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
+bool HardwareSerial::tryWrite(const uint8_t* data, size_t len)
 {
   if (len == 0) {
     return false;
@@ -335,12 +331,6 @@ bool HardwareSerial::tryWrite(uint8_t* data, size_t len)
     _tx_buffer_head = head;
     // Ensure the UDRE interrupt is enabled to start/continue transmission
     sbi(*_ucsrb, UDRIE0);
-  }
-
-  // If a TX-complete callback is registered, ensure we get TXC interrupt
-  // when the last byte finishes shifting out.
-  if (_tx_complete_cb) {
-    sbi(*_ucsrb, TXCIE0);
   }
 
   return true;
